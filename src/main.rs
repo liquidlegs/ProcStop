@@ -25,6 +25,7 @@ pub fn display_line(value: &str, index: u32) -> () {
   }
 }
 
+/**Function returns the name of a module by its pids. */
 fn get_module_name(pid: u32) -> String {
   let mut out = String::new();
   let mut buffer: [u16; 260] = [0u16; 260];
@@ -76,6 +77,7 @@ fn get_module_name(pid: u32) -> String {
   out
 }
 
+/*Function gets a list of system processes */
 fn get_process_list() -> Vec<u32> {
   let mut out: Vec<u32> = Vec::default();
   let mut procs: [u32; 1024] = [0; 1024];
