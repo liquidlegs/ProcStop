@@ -12,7 +12,7 @@ edition = "2021"
 # strip = true
 
 [dependencies]
-clap = "4.5.0"
+clap = { version = "3.2.22", features = ["derive"] }
 console = { version = "0.15.8", features = ["windows-console-colors"] }
 crossbeam = "0.8.4"
 winapi = { version = "0.3.9", features = ["psapi", "processthreadsapi", "winnt", "winerror", "handleapi"] }
