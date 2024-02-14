@@ -2,12 +2,12 @@ use console::style;
 use std::{mem, ptr};
 use winapi::ctypes::c_void;
 use winapi::um::{
-  psapi::{EnumProcessModules, GetModuleBaseNameW, EnumProcesses},
+  psapi::{EnumProcessModules, GetModuleBaseNameW, EnumProcesses, GetModuleFileNameExW},
   processthreadsapi::{
     OpenProcess, GetExitCodeProcess, TerminateProcess
   },
   handleapi::CloseHandle,
-  winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ}
+  winnt::{PROCESS_QUERY_INFORMATION, PROCESS_VM_READ},
 };
 use winapi::shared::{
   ntdef::HANDLE,
@@ -32,6 +32,92 @@ impl WinProcess {
         style("Debug").bright().red(), style("=>").cyan(), style(text).yellow()
       )
     }
+  }
+
+  pub fn get_exit_code(self, hproc: HANDLE, proc_name: &str) -> u32 {
+    let dbg = self.debug.clone();
+
+    let mut code: u32 = 0;
+    let status = unsafe {
+      GetExitCodeProcess(
+        hproc,
+        &mut code as *mut u32
+      )
+    };
+
+    if status == 1 {
+      Self::dprint(format!("Successfully grabbed exit code for process {}", proc_name).as_str(), dbg.clone());
+    }
+
+    else {
+      Self::dprint(format!("Failed to grab exit code for process {}", proc_name).as_str(), dbg.clone());
+    }
+    
+    code
+  }
+
+  pub fn kill_process(self, hproc: HANDLE, code: u32, proc_name: &str) -> () {
+    let dbg = self.debug.clone();
+    let status = unsafe {
+      TerminateProcess(hproc, code)
+    };
+
+    if status == 1 {
+      Self::dprint(format!("Sucessfully killed process {}", proc_name).as_str(), dbg.clone());
+    }
+
+    else {
+      Self::dprint(format!("Failed to kill process {}", proc_name).as_str(), dbg.clone());
+    }
+  }
+
+  pub fn get_module_path(self, pid: u32, proc_name: &str) -> String {
+    let mut out = String::new();
+    let mut buffer: [u16; 260] = [0u16; 260];
+    let dbg = self.debug.clone();
+
+    Self::dprint(
+      format!("Opening process pid -> [{}] with read permisions", pid).as_str(), dbg.clone()
+    );
+    
+    let mut hproc: HANDLE = unsafe {
+      OpenProcess(
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 
+        0 as i32, 
+        pid
+      )
+    };
+
+    Self::dprint(
+      format!("Attempting to retrieve path for process -> {}", proc_name).as_str(), dbg.clone()
+    );
+
+    let length = unsafe {
+      GetModuleFileNameExW(
+        hproc,
+        ptr::null_mut(),
+        &mut buffer as *mut u16,
+        mem::size_of_val(&buffer) as u32
+      )
+    };
+
+    if length > 0 {
+      Self::dprint(
+        format!("Successfully retrieved path for process -> {}", proc_name).as_str(), dbg.clone()
+      );
+
+      out.push_str(String::from_utf16_lossy(&buffer).as_str());
+    }
+
+    else {
+      Self::dprint(
+        format!("Failed to retrieve path for process -> {}", proc_name).as_str(), dbg.clone()
+      );
+
+      out.push_str("none");
+    }
+    
+    out
   }
 
   pub fn get_module_name(self, pid: u32) -> String {
@@ -79,6 +165,7 @@ impl WinProcess {
 
       else {
         Self::dprint(format!("Failed to get module base name for pid -> [{}]", pid).as_str(), dbg.clone());
+        out.push_str("none");
       }
   
       unsafe {
