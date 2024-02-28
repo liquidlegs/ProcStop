@@ -15,14 +15,14 @@ use winapi::shared::{
   winerror::ERROR_INVALID_HANDLE
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct WinProcess {
   pub debug: bool,
 }
 
 impl WinProcess {
-  pub fn new() -> Self {
-    WinProcess::default()
+  pub fn new(debug: bool) -> Self {
+    WinProcess { debug: debug }
   }
 
   pub fn dprint(text: &str, debug: bool) -> () {
@@ -56,7 +56,7 @@ impl WinProcess {
     code
   }
 
-  pub fn kill_process(self, hproc: HANDLE, code: u32, proc_name: &str) -> () {
+  pub fn kill_process(self, hproc: HANDLE, code: u32, proc_name: &str) -> bool {
     let dbg = self.debug.clone();
     let status = unsafe {
       TerminateProcess(hproc, code)
@@ -64,10 +64,32 @@ impl WinProcess {
 
     if status == 1 {
       Self::dprint(format!("Sucessfully killed process {}", proc_name).as_str(), dbg.clone());
+      true
     }
 
     else {
       Self::dprint(format!("Failed to kill process {}", proc_name).as_str(), dbg.clone());
+      false
+    }
+  }
+
+  pub fn get_process_handle(access: u32, pid: u32) -> Option<HANDLE> {
+    let mut hproc: HANDLE = ptr::null_mut();
+    
+    hproc = unsafe {
+      OpenProcess(
+        access, 
+        0 as i32, 
+        pid
+      )
+    };
+
+    if hproc != ptr::null_mut() {
+      Some(hproc)
+    }
+
+    else {
+      None
     }
   }
 
@@ -115,6 +137,13 @@ impl WinProcess {
       );
 
       out.push_str("none");
+    }
+
+    // Check if the handle is not NULL and give resources back to the system.
+    if hproc != ptr::null_mut() {
+      unsafe {
+        CloseHandle(hproc)
+      };
     }
     
     out

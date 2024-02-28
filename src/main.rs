@@ -16,6 +16,5 @@ fn main() {
   else {
     println!("Running without args");
     Arguments::run(false);
-    Arguments::test();
   }
 }
