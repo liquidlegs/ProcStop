@@ -10,11 +10,11 @@ fn main() {
   
   if argv.len() > 1 {
     args = Arguments::parse();
-    Arguments::run(args.debug);
+    args.run();
   }
   
   else {
     println!("Running without args");
-    Arguments::run(false);
+    args.run();
   }
 }

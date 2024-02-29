@@ -13,9 +13,17 @@ const RC_CONFIG_NAME: &str = "config.json";
 
 #[derive(Debug, Parser, Clone, Default)]
 pub struct Arguments {
-  /// Debug mode
+  /// Debug mode.
   #[clap(short, long, default_value_if("debug", Some("false"), Some("true")), min_values(0))]
-  pub debug: bool
+  pub debug: bool,
+
+  /// Disables process termination.
+  #[clap(short = 'D', long, default_value_if("disable_proc_termination", Some("false"), Some("true")), min_values(0))]
+  pub disable_proc_termination: bool,
+
+  /// Enables verbose messages.
+  #[clap(short, long, default_value_if("verbose", Some("false"), Some("true")), min_values(0))]
+  pub verbose: bool,
 }
 
 impl Arguments {
@@ -28,8 +36,8 @@ impl Arguments {
     }
   }
 
-  pub fn dprint(text: String, debug: bool) -> () {
-    if debug == true {
+  pub fn dprint(&self, text: String) -> () {
+    if self.debug.clone() == true {
       println!(
         "{} {} {}",
         style("Debug").bright().red(), style("=>").cyan(), style(text).yellow()
@@ -41,7 +49,7 @@ impl Arguments {
     println!("{}: {}", style("Error").bright().red(), style(text).cyan());
   }
 
-  pub fn init(debug: bool) -> RunningConfig {
+  pub fn init(&self) -> RunningConfig {
     let mut content = String::new();
     let mut path = String::new();
     let mut config = RunningConfig::new();
@@ -70,12 +78,10 @@ impl Arguments {
     config
   }
   
-  pub fn run(debug: bool) -> () {
-    let config = Self::init(debug);
-    let winapi = WinProcess::new(debug);
+  pub fn run(&self) -> () {
+    let config = self.init();
+    let winapi = WinProcess::new(self.debug);
     let procs = winapi.get_process_list();
-  
-    // println!("{:#?}", config);
 
     if procs.len() > 0 {
       for item in config.proccess_list {
@@ -86,34 +92,48 @@ impl Arguments {
           let name = win.get_module_name(procs[i] as u32);
           let path = win.get_module_path(procs[i], name.as_str());
   
-          if debug.clone() == true {
+          if self.debug.clone() == true {
             Self::display_line(
               format!("pid: {} name: {} path: {}", procs[i], name, path).as_str(), i as u32
             );
           }
 
-          // let c_item = item.clone();
-          // let item_slice = c_item.as_str();
+          if name.to_lowercase().as_str().contains(item.as_str()) {
+            let mut hproc: HANDLE = std::ptr::null_mut();
 
-          // match name.as_str() {
-          //   item_slice => {
-          //     let mut hproc: HANDLE = std::ptr::null_mut();
+            if let Some(h) = WinProcess::get_process_handle(PROCESS_TERMINATE, procs[i] as u32) {
+              hproc = h;
+            }
 
-          //     if let Some(h) = WinProcess::get_process_handle(PROCESS_TERMINATE, procs[i] as u32) {
-          //       hproc = h;
-          //     }
+            if hproc != std::ptr::null_mut() {
+              
+              if self.verbose.clone() == true {
+                println!(
+                  "[{}] Killing process {}",
+                  style("+").bright().green(),
+                  style(name.clone()).cyan()
+                );
+              }
 
-          //     if hproc != std::ptr::null_mut() {
-          //       println!("{item_slice}");
+              if self.disable_proc_termination.clone() == false {
+                let code = win.get_exit_code(hproc, name.clone().as_str());
+                let success = win.kill_process(hproc, code, name.clone().as_str());
 
-          //       unsafe {
-          //         CloseHandle(hproc)
-          //       };
-          //     }
-          //   }
+                if success == true {
+                  println!(
+                    "[{}] Successfully killed process {} with pid -> {}",
+                    style("+").bright().green(),
+                    style(name.clone()).cyan(),
+                    style(procs[i]).yellow()
+                  );
+                }
+              }
 
-          //   _ => {}
-          // }
+              unsafe {
+                CloseHandle(hproc)
+              };
+            }
+          }
         }
       }
       
