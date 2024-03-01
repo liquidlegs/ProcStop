@@ -34,6 +34,13 @@ impl WinProcess {
     }
   }
 
+  /**
+   * Function gets the exit code of the specified process.
+      Params:
+        self
+        hproc:      HANDLE [The handle to the process.]
+        proc_name:  &str   [The name of the process.]
+   */
   pub fn get_exit_code(self, hproc: HANDLE, proc_name: &str) -> u32 {
     let dbg = self.debug.clone();
 
@@ -56,6 +63,14 @@ impl WinProcess {
     code
   }
 
+  /**
+   * Function kills the specified process.
+      Params:
+        self
+        hproc:      HANDLE  [The hamdle to the specified process.]
+        code:       u32     [The process exit code.]
+        proc_name:  &str    [The name of the process.]
+   */
   pub fn kill_process(self, hproc: HANDLE, code: u32, proc_name: &str) -> bool {
     let dbg = self.debug.clone();
     let status = unsafe {
@@ -73,6 +88,13 @@ impl WinProcess {
     }
   }
 
+  /**
+   * Function gets the handle to the specified process.
+      Params:
+        access: u32 [Sets the desired access to the process.]
+        pid:    u32 [The pid number of the process you want to access.]
+      Returns Option<HANDLE>
+   */
   pub fn get_process_handle(access: u32, pid: u32) -> Option<HANDLE> {
     let mut hproc: HANDLE = ptr::null_mut();
     
@@ -93,6 +115,14 @@ impl WinProcess {
     }
   }
 
+  /**
+   * Function gets the full path to the specified process.
+      Params:
+        self
+        pid:        u32   [The pid of the process you want to access.]
+        proc_name:  &str  [The name of the process.]
+      Returns String
+   */
   pub fn get_module_path(self, pid: u32, proc_name: &str) -> String {
     let mut out = String::new();
     let mut buffer: [u16; 260] = [0u16; 260];
@@ -149,6 +179,12 @@ impl WinProcess {
     out
   }
 
+  /**
+   * Function gets the name of the specified process by its pid.
+      Params:
+        pid: u32 [The pid of the process.]
+      Returns String
+   */
   pub fn get_module_name(self, pid: u32) -> String {
     let mut out = String::new();
     let mut buffer: [u16; 260] = [0u16; 260];
@@ -214,7 +250,12 @@ impl WinProcess {
     out
   }
   
-  /*Function gets a list of system processes */
+  /**
+   * Function gets a list of system processes
+      Params:
+        self
+      Returns Vec<u32>
+   */
   pub fn get_process_list(self) -> Vec<u32> {
     let mut out: Vec<u32> = Vec::default();
     let mut procs: [u32; 1024] = [0; 1024];

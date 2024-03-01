@@ -21,6 +21,12 @@ impl RunningConfig {
   }
 }
 
+/**
+ * Function resolves the config path from a custom environment variable.
+    Params:
+      env_key: &str [The environment variable name]
+    Returns Option<String>
+ */
 pub fn get_config_path(env_key: &str) -> Option<String> {
   let mut path = String::new();
 
@@ -37,6 +43,12 @@ pub fn get_config_path(env_key: &str) -> Option<String> {
   Some(path)
 }
 
+/**
+ * Function loads the config file and returns it as a string.
+    Params:
+      path: &str [The path to the config file.]
+    Returns Option<String>
+ */
 pub fn load_config(path: &str) -> Option<String> {
   let mut content = String::new();
 
@@ -70,6 +82,13 @@ pub fn load_config(path: &str) -> Option<String> {
   Some(content)
 }
 
+/**
+ * Function writes the content of a string to a file.
+    Params:
+      content:    String [The bytes to write to a file.]
+      file_path:  &str   [The path to the config file.]
+    Returns bool
+ */
 pub fn save_config(content: String, file_path: &str) -> bool {
   let pbuf = Path::new(file_path);
   let mut out = false;
@@ -102,10 +121,20 @@ pub fn save_config(content: String, file_path: &str) -> bool {
   out
 }
 
+/**
+ * Function creates a new thread and parses the content of the config and returns it as a structure.
+    Params:
+      content: String [The content to parse.]
+    Returns RunningConfig
+ */
 pub fn parse_config(content: String) -> RunningConfig {
   let mut config = RunningConfig::new();
 
+  // Creates a channel sender and receiver.
   let (tx, rx) = mpsc::channel::<RunningConfig>();
+  
+  // Creating a new thread here prevents any situations where if there is too much content in the config file
+  // that it does not create overflow the main thread, thus causing a stack overflow.
   std::thread::spawn(Box::new(move || {
     
     match serde_json::from_str::<RunningConfig>(&content) {
@@ -125,6 +154,7 @@ pub fn parse_config(content: String) -> RunningConfig {
     }
   }));
 
+  // After the content is parsed the worker thread is terminated and the main thread receives the structure.
   match rx.recv() {
     Ok(s) => { config = s; }
     Err(e) => {
@@ -139,6 +169,13 @@ pub fn parse_config(content: String) -> RunningConfig {
   config
 }
 
+/**
+ * Function generates a config file by creating a new structure of the RunningConfig struct.
+   Serde_json is then used to convert this into the json format which is then written to the disk as a file.
+    Params:
+      filename: &str [The name of the config file/]
+   Returns nothing
+ */
 pub fn generate_config_file(filename: &str) -> () {
   let config = RunningConfig::new();
   let mut out = String::new();
